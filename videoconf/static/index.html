@@ -1,0 +1,1812 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VideoConf</title>
+<style>
+:root{--bg:#0a0a0f;--bg2:#12121a;--bg3:#1a1a26;--card:#1e1e2e;--border:rgba(255,255,255,.08);--border2:rgba(255,255,255,.15);--accent:#6366f1;--accent2:#818cf8;--danger:#ef4444;--success:#22c55e;--warn:#f59e0b;--text:#f1f5f9;--muted:#94a3b8}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;height:100vh;overflow:hidden}
+
+/* ── LOBBY ── */
+#lobby{height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1.5rem;background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(99,102,241,.15) 0%,transparent 70%)}
+.logo{font-size:1.8rem;font-weight:700;letter-spacing:-.04em;margin-bottom:.3rem;background:linear-gradient(135deg,#a5b4fc,#6366f1);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.tagline{color:var(--muted);font-size:.875rem;margin-bottom:1.75rem}
+.lobby-card{background:var(--card);border:1px solid var(--border2);border-radius:20px;padding:1.75rem;width:100%;max-width:420px}
+.lobby-card h2{font-size:1.1rem;font-weight:600;margin-bottom:.3rem}
+.lobby-card>p{color:var(--muted);font-size:.85rem;margin-bottom:1.2rem}
+.fg{margin-bottom:.85rem}
+.fg label{display:block;font-size:.72rem;color:var(--muted);margin-bottom:.3rem;font-weight:500;text-transform:uppercase;letter-spacing:.05em}
+.fg input,.fg select{width:100%;padding:.68rem .9rem;background:var(--bg3);border:1px solid var(--border2);border-radius:10px;color:var(--text);font-size:.9rem;outline:none;transition:border-color .2s}
+.fg input:focus,.fg select:focus{border-color:var(--accent)}
+.fg input::placeholder{color:var(--muted);opacity:.6}
+.fg select option{background:var(--bg3)}
+.btn{padding:.72rem 1rem;border:none;border-radius:10px;font-size:.88rem;font-weight:600;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:.35rem}
+.btn-primary{background:var(--accent);color:#fff;width:100%;justify-content:center}
+.btn-primary:hover{background:#4f46e5}
+.btn-ghost{background:transparent;border:1px solid var(--border2);color:var(--text)}
+.btn-ghost:hover{background:var(--bg3)}
+.btn-sm{padding:.4rem .7rem;font-size:.78rem;border-radius:7px}
+.status-msg{font-size:.8rem;padding:.5rem .75rem;border-radius:8px;margin-top:.75rem}
+.status-msg.err{background:rgba(239,68,68,.1);color:#fca5a5;border:1px solid rgba(239,68,68,.25)}
+.status-msg.info{background:rgba(99,102,241,.1);color:var(--accent2);border:1px solid rgba(99,102,241,.25)}
+
+/* ── ROOM ── */
+#room{display:none;height:100vh;flex-direction:column}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:.55rem 1rem;background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0;gap:.5rem;z-index:10}
+.topbar-left{display:flex;align-items:center;gap:.55rem}
+.live-dot{width:7px;height:7px;background:var(--danger);border-radius:50%;animation:pulse 1.5s infinite;flex-shrink:0}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.room-badge{background:rgba(99,102,241,.2);border:1px solid rgba(99,102,241,.4);color:var(--accent2);font-size:.68rem;font-weight:600;padding:.18rem .5rem;border-radius:5px}
+.room-id-label{font-weight:600;font-size:.88rem}
+.room-timer{color:var(--muted);font-size:.78rem;font-variant-numeric:tabular-nums}
+.lock-badge{font-size:.72rem;color:var(--warn);display:none}
+.lock-badge.on{display:inline}
+.p-count{font-size:.78rem;color:var(--muted)}
+
+/* ── WINDOW DESKTOP ── */
+#desktop{flex:1;position:relative;overflow:hidden;background:var(--bg)}
+
+/* Taskbar (minimized windows) */
+#taskbar{display:flex;align-items:center;gap:.4rem;padding:.35rem .65rem;background:var(--bg2);border-top:1px solid var(--border);flex-shrink:0;min-height:44px;flex-wrap:wrap}
+.taskbar-label{font-size:.68rem;color:var(--subtle,#475569);white-space:nowrap;flex-shrink:0}
+.task-item{display:flex;align-items:center;gap:.35rem;padding:.3rem .6rem;background:var(--bg3);border:1px solid var(--border2);border-radius:7px;cursor:pointer;font-size:.72rem;font-weight:500;transition:all .15s;white-space:nowrap;user-select:none}
+.task-item:hover{background:var(--card);border-color:var(--accent)}
+.task-item.active-task{border-color:var(--accent);color:var(--accent2)}
+
+/* Controls bar */
+.controls{flex-shrink:0;padding:.6rem 1rem;background:var(--bg2);border-top:1px solid var(--border);display:flex;align-items:center;justify-content:center;gap:.4rem;flex-wrap:wrap;z-index:10}
+.ctrl-wrap{position:relative;margin-bottom:15px}
+.ctrl-btn{width:42px;height:42px;border-radius:10px;border:1px solid var(--border2);background:var(--card);color:var(--text);cursor:pointer;font-size:1.05rem;display:flex;align-items:center;justify-content:center;transition:all .2s}
+.ctrl-btn:hover{background:var(--bg3);transform:translateY(-2px)}
+.ctrl-btn.off{background:var(--danger);border-color:transparent;color:#fff}
+.ctrl-btn.active{background:var(--bg3);border-color:rgba(99,102,241,.5);color:var(--accent2)}
+.ctrl-btn.end{background:var(--danger);border-color:transparent;color:#fff;width:50px;border-radius:12px}
+.ctrl-btn.locked-btn{border-color:rgba(245,158,11,.5);color:var(--warn)}
+.ctrl-label{font-size:.55rem;color:var(--muted);position:absolute;bottom:-14px;left:50%;transform:translateX(-50%);white-space:nowrap}
+
+/* ── FLOATING WINDOW ── */
+.fwin{
+  position:absolute;
+  background:var(--card);
+  border:1px solid var(--border2);
+  border-radius:12px;
+  overflow:hidden;
+  box-shadow:0 8px 32px rgba(0,0,0,.5);
+  display:flex;
+  flex-direction:column;
+  min-width:200px;
+  min-height:150px;
+  transition:box-shadow .15s;
+  z-index:20;
+}
+.fwin.focused{border-color:rgba(99,102,241,.6);box-shadow:0 12px 48px rgba(99,102,241,.2),0 4px 16px rgba(0,0,0,.5)}
+.fwin.minimized{display:none}
+
+/* Window title bar */
+.fwin-bar{
+  display:flex;align-items:center;gap:.4rem;
+  padding:.35rem .6rem;
+  background:var(--bg3);
+  border-bottom:1px solid var(--border);
+  cursor:move;
+  user-select:none;
+  flex-shrink:0;
+}
+.fwin-title{flex:1;font-size:.75rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fwin-btns{display:flex;gap:.3rem;flex-shrink:0}
+.fwin-btn{width:18px;height:18px;border-radius:50%;border:none;cursor:pointer;font-size:.55rem;display:flex;align-items:center;justify-content:center;transition:all .15s;color:rgba(0,0,0,.7);font-weight:700}
+.fwin-btn:hover{filter:brightness(1.2);transform:scale(1.1)}
+.fwin-btn.min{background:#f59e0b}
+.fwin-btn.max{background:#22c55e}
+.fwin-btn.close{background:#ef4444;color:#fff}
+
+/* Window body */
+.fwin-body{flex:1;overflow:hidden;position:relative;display:flex;flex-direction:column}
+
+/* Resize handle */
+.fwin-resize{
+  position:absolute;bottom:0;right:0;
+  width:16px;height:16px;
+  cursor:se-resize;
+  z-index:5;
+}
+.fwin-resize::after{
+  content:'';display:block;
+  position:absolute;bottom:3px;right:3px;
+  width:8px;height:8px;
+  border-right:2px solid var(--muted);
+  border-bottom:2px solid var(--muted);
+  border-radius:1px;
+}
+
+/* ── VIDEO TILE WINDOW ── */
+.vtile-video{width:100%;height:100%;object-fit:cover;display:block;background:#000}
+.cam-off{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--bg3);gap:.5rem}
+.av{width:60px;height:60px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.5rem;font-weight:700}
+.av-name{font-size:.8rem;color:var(--muted)}
+.vtile-overlay{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,.7));padding:.4rem .5rem;display:flex;align-items:center;justify-content:space-between}
+.vtile-name{font-size:.72rem;font-weight:500;display:flex;align-items:center;gap:.25rem}
+.badge{font-size:.58rem;font-weight:700;padding:1px 4px;border-radius:3px}
+.badge-host{background:rgba(99,102,241,.8);color:#c7d2fe}
+.badge-you{background:rgba(34,197,94,.3);color:#86efac}
+.vtile-ctrls{display:flex;gap:.25rem}
+.vtile-btn{width:22px;height:22px;border-radius:4px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:.68rem;transition:all .15s;color:#fff}
+.vtile-btn.red{background:rgba(239,68,68,.8)}
+.vtile-btn.dim{background:rgba(255,255,255,.15)}
+.vtile-btn:hover{transform:scale(1.15)}
+.speaking-ring{position:absolute;inset:0;border:3px solid var(--success);border-radius:11px;pointer-events:none;opacity:0;transition:opacity .2s}
+.speaking-ring.on{opacity:1}
+
+/* ── SCREEN WINDOW ── */
+.screen-video-el{width:100%;height:100%;object-fit:contain;background:#000;display:block}
+
+/* ── VIDEO PLAYER WINDOW ── */
+.vplayer-video{width:100%;flex:1;object-fit:contain;background:#000;display:block;min-height:0}
+.vplayer-controls{display:flex;align-items:center;gap:.5rem;padding:.4rem .65rem;background:var(--bg3);border-top:1px solid var(--border);flex-shrink:0}
+.vplayer-controls button{background:none;border:none;color:var(--text);cursor:pointer;font-size:.95rem;padding:.15rem;transition:all .15s}
+.vplayer-controls button:hover{color:var(--accent2)}
+.vp-time{font-size:.7rem;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.vp-progress{flex:1;height:5px;background:var(--border2);border-radius:3px;cursor:pointer;position:relative}
+.vp-filled{height:100%;background:var(--accent);border-radius:3px;pointer-events:none;transition:width .1s}
+
+/* ── SIDEBAR WINDOW ── */
+.sidebar-tabs{display:flex;border-bottom:1px solid var(--border);flex-shrink:0}
+.stab{flex:1;padding:.5rem .3rem;text-align:center;font-size:.7rem;font-weight:500;color:var(--muted);cursor:pointer;border:none;background:none;border-bottom:2px solid transparent;transition:all .2s;white-space:nowrap}
+.stab.active{color:var(--accent2);border-bottom-color:var(--accent)}
+.sidebar-panel{flex:1;overflow-y:auto;padding:.6rem;display:none}
+.sidebar-panel.active{display:block}
+.pitem{display:flex;align-items:center;gap:.5rem;padding:.4rem .5rem;border-radius:8px;margin-bottom:.3rem;background:var(--bg3)}
+.pav{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;flex-shrink:0}
+.pinfo{flex:1;min-width:0}
+.pname{font-size:.76rem;font-weight:500;display:flex;align-items:center;gap:.25rem;flex-wrap:wrap}
+.pstatus{font-size:.65rem;color:var(--muted)}
+.pactions{display:flex;gap:.2rem;flex-shrink:0}
+.paction-btn{width:22px;height:22px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--text);cursor:pointer;font-size:.65rem;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.paction-btn:hover{background:var(--card)}
+.paction-btn.off{color:var(--danger);border-color:rgba(239,68,68,.3);background:rgba(239,68,68,.08)}
+.chat-messages{display:flex;flex-direction:column;gap:.4rem}
+.chat-msg{padding:.38rem .5rem;border-radius:7px;background:var(--bg3);font-size:.76rem}
+.chat-msg .cm-header{display:flex;justify-content:space-between;margin-bottom:.1rem}
+.chat-msg .cm-name{font-weight:600;color:var(--accent2)}
+.chat-msg .cm-time{font-size:.63rem;color:var(--muted)}
+.chat-msg .cm-text{color:var(--text);line-height:1.4;word-break:break-word}
+.chat-msg.mine{background:rgba(99,102,241,.12)}
+.chat-msg.mine .cm-name{color:var(--success)}
+.chat-input-row{display:flex;gap:.3rem;padding:.45rem;border-top:1px solid var(--border);flex-shrink:0}
+.chat-input{flex:1;padding:.45rem .6rem;background:var(--bg3);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-size:.8rem;outline:none}
+.chat-input:focus{border-color:var(--accent)}
+.chat-send{padding:.45rem .6rem;background:var(--accent);border:none;border-radius:6px;color:#fff;cursor:pointer;font-size:.8rem}
+.file-upload-area{border:2px dashed var(--border2);border-radius:9px;padding:.85rem;text-align:center;cursor:pointer;transition:all .2s;margin-bottom:.6rem;font-size:.76rem;color:var(--muted)}
+.file-upload-area:hover,.file-upload-area.drag{border-color:var(--accent);background:rgba(99,102,241,.05);color:var(--accent2)}
+.file-item{display:flex;align-items:center;gap:.5rem;padding:.45rem .55rem;background:var(--bg3);border-radius:7px;margin-bottom:.3rem}
+.file-icon{font-size:1rem;flex-shrink:0}
+.file-info{flex:1;min-width:0}
+.file-name{font-size:.75rem;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.file-meta{font-size:.65rem;color:var(--muted)}
+.file-dl{padding:.25rem .5rem;background:var(--accent);border:none;border-radius:5px;color:#fff;font-size:.68rem;cursor:pointer;white-space:nowrap;text-decoration:none}
+.file-dl:hover{background:#4f46e5}
+.upload-progress{height:3px;background:var(--border2);border-radius:2px;margin-top:.3rem;overflow:hidden}
+.upload-bar{height:100%;background:var(--accent);transition:width .3s;width:0}
+.video-url-row{display:flex;gap:.35rem;margin-bottom:.55rem}
+.video-url-row input{flex:1;padding:.5rem .65rem;background:var(--bg3);border:1px solid var(--border2);border-radius:7px;color:var(--text);font-size:.78rem;outline:none}
+.video-url-row input:focus{border-color:var(--accent)}
+.vfile-item{display:flex;align-items:center;gap:.45rem;padding:.4rem .55rem;background:var(--bg3);border-radius:7px;margin-bottom:.28rem;cursor:pointer;border:2px solid transparent;transition:all .15s}
+.vfile-item:hover{background:var(--card);border-color:rgba(99,102,241,.3)}
+.vfile-item.playing{border-color:var(--accent);background:rgba(99,102,241,.1)}
+.vfile-name{font-size:.75rem;font-weight:500;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text)}
+.vfile-meta{font-size:.63rem;color:var(--muted)}
+.vfile-play-hint{font-size:.62rem;color:var(--accent2);white-space:nowrap}
+.host-only-note{font-size:.7rem;color:var(--muted);text-align:center;margin-top:.4rem}
+.vfile-section-label{font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.3rem;font-weight:600}
+
+/* MODALS */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:500;display:none;align-items:center;justify-content:center;padding:1rem}
+.overlay.open{display:flex}
+.modal{background:var(--card);border:1px solid var(--border2);border-radius:18px;padding:1.75rem;width:100%;max-width:520px;max-height:88vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.6)}
+.modal h3{font-size:1.05rem;margin-bottom:.35rem}
+.modal>p{color:var(--muted);font-size:.83rem;margin-bottom:1.1rem}
+.sum-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem;margin-bottom:1rem}
+.sbox{background:var(--bg3);border-radius:8px;padding:.55rem .65rem;text-align:center}
+.sbox .sv{font-size:1.05rem;font-weight:700;color:var(--accent2)}
+.sbox .sl{font-size:.65rem;color:var(--muted);margin-top:.1rem}
+.sum-sec{margin-bottom:.85rem}
+.sum-sec h4{font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.28rem;font-weight:600}
+.sum-sec p,.sum-sec li{font-size:.83rem;line-height:1.55}
+.sum-sec ul{padding-left:1rem}
+.sum-sec li{margin-bottom:.15rem}
+.loading-row{display:flex;align-items:center;gap:.6rem;color:var(--muted);font-size:.875rem;padding:.5rem 0}
+.spin{width:15px;height:15px;border:2px solid rgba(255,255,255,.12);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0}
+@keyframes spin{to{transform:rotate(360deg)}}
+.modal-footer{display:flex;gap:.5rem;justify-content:flex-end;margin-top:1.1rem;flex-wrap:wrap}
+.email-row{display:flex;gap:.5rem;margin-top:.5rem}
+.email-row input{flex:1;padding:.55rem .7rem;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-size:.83rem;outline:none}
+.email-row input:focus{border-color:var(--accent)}
+.btn-send{padding:.55rem .85rem;background:var(--success);border:none;border-radius:8px;color:#fff;font-size:.8rem;cursor:pointer;font-weight:600;white-space:nowrap}
+#emailSt{font-size:.73rem;color:var(--muted);margin-top:.3rem;min-height:1rem}
+#toast{position:fixed;bottom:1rem;left:50%;transform:translateX(-50%) translateY(14px);background:var(--card);border:1px solid var(--border2);border-radius:9px;padding:.5rem 1rem;font-size:.82rem;opacity:0;transition:all .3s;pointer-events:none;z-index:600;white-space:nowrap}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+#fileInput,#videoFileInput{display:none}
+
+/* ── CONTEXT MENU ── */
+#ctxMenu{position:fixed;z-index:900;background:var(--card);border:1px solid var(--border2);border-radius:12px;padding:.35rem;box-shadow:0 8px 32px rgba(0,0,0,.6);min-width:200px;display:none}
+#ctxMenu.open{display:block}
+.ctx-section{font-size:.65rem;color:var(--muted);padding:.3rem .65rem .1rem;text-transform:uppercase;letter-spacing:.06em;font-weight:600}
+.ctx-item{display:flex;align-items:center;gap:.6rem;padding:.45rem .75rem;border-radius:8px;cursor:pointer;font-size:.8rem;font-weight:500;transition:background .12s;white-space:nowrap}
+.ctx-item:hover{background:var(--bg3)}
+.ctx-item .ctx-icon{font-size:.9rem;width:1.2rem;text-align:center;flex-shrink:0}
+.ctx-item.active-layout{background:rgba(99,102,241,.15);color:var(--accent2)}
+.ctx-sep{height:1px;background:var(--border);margin:.25rem 0}
+
+/* ── LAYOUT PICKER OVERLAY ── */
+#layoutPicker{position:fixed;inset:0;z-index:800;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.7)}
+#layoutPicker.open{display:flex}
+.lp-card{background:var(--card);border:1px solid var(--border2);border-radius:18px;padding:1.5rem;max-width:620px;width:90%;max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.6)}
+.lp-title{font-size:1rem;font-weight:600;margin-bottom:1rem}
+.lp-section{font-size:.72rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin:.9rem 0 .45rem}
+.lp-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.6rem}
+.lp-btn{background:var(--bg3);border:2px solid transparent;border-radius:10px;padding:.6rem .5rem;cursor:pointer;text-align:center;transition:all .15s;position:relative}
+.lp-btn:hover{background:var(--card);border-color:var(--border2)}
+.lp-btn.lp-active{border-color:var(--accent);background:rgba(99,102,241,.1)}
+.lp-preview{width:100%;height:52px;background:var(--bg);border-radius:5px;margin-bottom:.4rem;position:relative;overflow:hidden}
+.lp-w{position:absolute;background:rgba(99,102,241,.35);border:1px solid rgba(99,102,241,.5);border-radius:2px}
+.lp-w.s{background:rgba(34,197,94,.35);border-color:rgba(34,197,94,.5)}
+.lp-w.c{background:rgba(245,158,11,.3);border-color:rgba(245,158,11,.5)}
+.lp-name{font-size:.72rem;font-weight:600;color:var(--text)}
+.lp-desc{font-size:.62rem;color:var(--muted);margin-top:.2rem;line-height:1.35}
+.lp-close-btn{float:right;background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.1rem;margin-top:-.3rem}
+</style>
+</head>
+<body>
+
+<!-- LOBBY -->
+<div id="lobby">
+  <div class="logo">⬡ VideoConf</div>
+  <div class="tagline">Python WebRTC · 视频 · 屏幕共享 · 文件 · 视频播放</div>
+  <div class="lobby-card">
+    <h2>加入或创建会议</h2>
+    <p>支持多人视频、屏幕共享、文件分享、视频播放、聊天</p>
+    <div class="fg"><label>你的名字</label><input id="lbName" placeholder="输入你的名字" maxlength="20"></div>
+    <div class="fg"><label>会议室 ID</label><input id="lbRoom" placeholder="留空自动生成（主持人）或填 ID 加入"></div>
+    <div class="fg"><label>角色</label>
+      <select id="lbRole">
+        <option value="host">🎤 主持人（完整控制权）</option>
+        <option value="participant">👤 参与者</option>
+      </select>
+    </div>
+    <button class="btn btn-primary" onclick="joinRoom()">🚀 进入会议</button>
+    <div id="lbStatus"></div>
+  </div>
+</div>
+
+<!-- ROOM -->
+<div id="room">
+  <!-- Top bar -->
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="live-dot"></div>
+      <span class="room-badge">LIVE</span>
+      <span class="room-id-label" id="roomIdDisplay">—</span>
+      <span class="room-timer" id="roomTimer">00:00</span>
+      <span class="lock-badge" id="lockBadge">🔒 锁定</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:.5rem">
+      <span class="p-count">👥 <span id="pCount">0</span></span>
+      <button class="btn btn-sm btn-ghost" onclick="openLayoutPicker()" title="选择布局模式">⊞ 布局</button>
+      <button class="btn btn-sm btn-ghost" onclick="applyLayout('free')" title="自由模式（不平铺）">⤢ 自由</button>
+    </div>
+  </div>
+
+  <!-- Desktop: floating windows live here -->
+  <div id="desktop"></div>
+
+  <!-- Taskbar: minimized windows -->
+  <div id="taskbar">
+    <span class="taskbar-label">最小化：</span>
+    <!-- task items injected here -->
+  </div>
+
+  <!-- Controls -->
+  <div class="controls">
+    <div class="ctrl-wrap"><button class="ctrl-btn" id="micBtn" onclick="toggleMic()">🎤<span class="ctrl-label">麦克风</span></button></div>
+    <div class="ctrl-wrap"><button class="ctrl-btn" id="camBtn" onclick="toggleCam()">📷<span class="ctrl-label">摄像头</span></button></div>
+    <div class="ctrl-wrap"><button class="ctrl-btn" id="screenBtn" onclick="toggleScreenShare()">🖥️<span class="ctrl-label">共享屏幕</span></button></div>
+    <div class="ctrl-wrap" id="lockWrap" style="display:none"><button class="ctrl-btn" id="lockBtn" onclick="toggleLock()">🔓<span class="ctrl-label">锁定</span></button></div>
+    <div class="ctrl-wrap" id="endWrap" style="display:none"><button class="ctrl-btn end" onclick="endMeeting()">⏹<span class="ctrl-label">结束</span></button></div>
+    <div class="ctrl-wrap"><button class="ctrl-btn" onclick="copyInvite()">🔗<span class="ctrl-label">邀请</span></button></div>
+    <div class="ctrl-wrap"><button class="ctrl-btn" onclick="openSidebarWin()">💬<span class="ctrl-label">聊天</span></button></div>
+    <div class="ctrl-wrap"><button class="ctrl-btn" style="background:var(--danger);border-color:transparent;color:#fff" onclick="leaveRoom()">📵<span class="ctrl-label">离开</span></button></div>
+  </div>
+</div>
+
+<!-- Context Menu -->
+<div id="ctxMenu">
+  <div class="ctx-section">当前窗口</div>
+  <div class="ctx-item" id="ctxMin" onclick="ctxAction('min')"><span class="ctx-icon">🟡</span>最小化</div>
+  <div class="ctx-item" id="ctxMax" onclick="ctxAction('max')"><span class="ctx-icon">🟢</span>最大化 / 还原</div>
+  <div class="ctx-item" id="ctxSnap" onclick="ctxAction('snap')"><span class="ctx-icon">⊡</span>贴靠半屏</div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-section">布局模式</div>
+  <div class="ctx-item" onclick="applyLayout('tile-equal')"><span class="ctx-icon">⊞</span>均等平铺</div>
+  <div class="ctx-item" onclick="applyLayout('focus')"><span class="ctx-icon">◉</span>单人焦点</div>
+  <div class="ctx-item" onclick="applyLayout('speaker')"><span class="ctx-icon">◎</span>演讲者+缩略图</div>
+  <div class="ctx-item" onclick="applyLayout('lr-split')"><span class="ctx-icon">◫</span>左右分屏</div>
+  <div class="ctx-item" onclick="applyLayout('screen-main')"><span class="ctx-icon">🖥️</span>屏幕共享为主</div>
+  <div class="ctx-item" onclick="applyLayout('video-main')"><span class="ctx-icon">🎬</span>视频播放为主</div>
+  <div class="ctx-item" onclick="applyLayout('waterfall')"><span class="ctx-icon">🌊</span>瀑布流</div>
+  <div class="ctx-item" onclick="applyLayout('3col')"><span class="ctx-icon">≡</span>三列等分</div>
+  <div class="ctx-item" onclick="applyLayout('2-1')"><span class="ctx-icon">◧</span>两大一小</div>
+  <div class="ctx-item" onclick="applyLayout('sidebar-fixed')"><span class="ctx-icon">▣</span>侧边栏固定</div>
+  <div class="ctx-item" onclick="applyLayout('cascade')"><span class="ctx-icon">❐</span>层叠</div>
+  <div class="ctx-item" onclick="applyLayout('free')"><span class="ctx-icon">✦</span>自由浮动</div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item" onclick="tileAll()"><span class="ctx-icon">⊞</span>平铺全部（含最小化）</div>
+  <div class="ctx-item" onclick="minimizeAll()"><span class="ctx-icon">−</span>全部最小化</div>
+</div>
+
+<!-- Layout Picker -->
+<div id="layoutPicker" onclick="if(event.target===this)closeLayoutPicker()">
+  <div class="lp-card">
+    <div class="lp-title">⊞ 布局模式 <button class="lp-close-btn" onclick="closeLayoutPicker()">✕</button></div>
+
+    <div class="lp-section">自动平铺布局</div>
+    <div class="lp-grid" id="lpAutoGrid"></div>
+
+    <div class="lp-section">手动排列模式</div>
+    <div class="lp-grid" id="lpManualGrid"></div>
+  </div>
+</div>
+
+<!-- Summary Modal -->
+<div class="overlay" id="summaryOverlay">
+  <div class="modal">
+    <h3>📋 会议纪要</h3>
+    <p>AI 生成的完整会议记录，仅主持人可见</p>
+    <div id="sumLoading" class="loading-row"><div class="spin"></div><span>AI 正在生成会议纪要...</span></div>
+    <div id="sumBody" style="display:none">
+      <div class="sum-stats" id="sumStats"></div>
+      <div id="sumContent"></div>
+      <div class="sum-sec" style="margin-top:1rem;padding-top:.85rem;border-top:1px solid var(--border)">
+        <h4>📧 发送给主持人</h4>
+        <div class="email-row"><input id="hostEmail" type="email" placeholder="主持人邮箱"><button class="btn-send" onclick="sendSummaryEmail()">发送</button></div>
+        <div id="emailSt"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('summaryOverlay')">关闭</button>
+      <button class="btn btn-ghost" id="copySumBtn" style="display:none" onclick="copySummaryText()">📋 复制</button>
+      <button class="btn btn-primary" id="newMeetBtn" style="display:none" onclick="newMeeting()">🆕 新会议</button>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="fileInput" onchange="uploadFile(this)">
+<input type="file" id="videoFileInput" accept="video/*" onchange="uploadVideoFile(this)">
+<div id="toast"></div>
+
+<script>
+'use strict';
+// ═══════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════
+let ws=null,myPid=null,myName='',isHost=false,roomId='';
+let roomLocked=false,micOn=true,camOn=true,screenSharing=false;
+let localStream=null,screenStream=null;
+let timerInterval=null,seconds=0;
+let summaryRawText='';
+
+const peerConnections={},remoteStreams={},iceBuf={};
+const ICE=[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'}];
+const COLORS=[
+  {bg:'rgba(99,102,241,.25)',fg:'#a5b4fc'},{bg:'rgba(34,197,94,.25)',fg:'#86efac'},
+  {bg:'rgba(245,158,11,.25)',fg:'#fcd34d'},{bg:'rgba(236,72,153,.25)',fg:'#f9a8d4'},
+  {bg:'rgba(14,165,233,.25)',fg:'#7dd3fc'},{bg:'rgba(168,85,247,.25)',fg:'#d8b4fe'},
+];
+let colorIdx=0; const pidColors={};
+function getColor(pid){if(!pidColors[pid])pidColors[pid]=COLORS[colorIdx++%COLORS.length];return pidColors[pid];}
+
+// uploaded videos list
+const uploadedVideos=[];
+
+// ═══════════════════════════════════════════════════════
+//  WINDOW MANAGER
+// ═══════════════════════════════════════════════════════
+const wins={}; // id -> {el, minimized, pid?, type}
+let zTop=20;
+let dragState=null,resizeState=null;
+
+function createWin(id,title,emoji,opts={}){
+  if(wins[id]){
+    restoreWin(id); focusWin(id); return wins[id].el;
+  }
+  const el=document.createElement('div');
+  el.className='fwin';
+  el.id='fwin-'+id;
+  el.style.cssText=`left:${opts.x||40}px;top:${opts.y||40}px;width:${opts.w||320}px;height:${opts.h||220}px;z-index:${++zTop}`;
+
+  // Title bar
+  const bar=document.createElement('div');
+  bar.className='fwin-bar';
+  bar.innerHTML=`<span style="font-size:.85rem">${emoji}</span><span class="fwin-title">${esc(title)}</span>
+    <div class="fwin-btns">
+      <button class="fwin-btn min" title="最小化" onclick="minimizeWin('${id}')">−</button>
+      <button class="fwin-btn max" title="最大化/还原" onclick="maximizeWin('${id}')">⤢</button>
+      ${opts.closable!==false?`<button class="fwin-btn close" title="关闭" id="fwin-close-${id}" onclick="_winClose('${id}')">✕</button>`:''}
+    </div>`;
+  bar.addEventListener('mousedown',e=>startDrag(e,id));
+  bar.addEventListener('dblclick',()=>maximizeWin(id));
+  bar.addEventListener('contextmenu',e=>showCtxMenu(e,id));
+  el.appendChild(bar);
+
+  // Body
+  const body=document.createElement('div');
+  body.className='fwin-body';
+  body.id='fwin-body-'+id;
+  el.appendChild(body);
+
+  // Resize handle
+  const rz=document.createElement('div');
+  rz.className='fwin-resize';
+  rz.addEventListener('mousedown',e=>startResize(e,id));
+  el.appendChild(rz);
+
+  el.addEventListener('mousedown',()=>focusWin(id));
+
+  document.getElementById('desktop').appendChild(el);
+  wins[id]={el,minimized:false,title,emoji,maxSaved:null,onClose:opts.onClose||null};
+  return el;
+}
+
+// Called by close button — runs custom handler if set, else default closeWin
+function _winClose(id){
+  const w=wins[id]; if(!w) return;
+  if(w.onClose) w.onClose();
+  else closeWin(id);
+}
+
+function focusWin(id){
+  Object.values(wins).forEach(w=>w.el.classList.remove('focused'));
+  const w=wins[id]; if(!w) return;
+  w.el.style.zIndex=++zTop;
+  w.el.classList.add('focused');
+}
+
+function minimizeWin(id){
+  const w=wins[id]; if(!w) return;
+  w.minimized=true;
+  w.el.classList.add('minimized');
+  addTaskItem(id);
+  tileVisible();
+}
+
+function restoreWin(id){
+  const w=wins[id]; if(!w) return;
+  w.minimized=false;
+  w.el.classList.remove('minimized');
+  removeTaskItem(id);
+  focusWin(id);
+  tileVisible();
+}
+
+function maximizeWin(id){
+  const w=wins[id]; if(!w) return;
+  const desktop=document.getElementById('desktop');
+  const dw=desktop.clientWidth, dh=desktop.clientHeight;
+  if(w.maxSaved){
+    // Restore
+    const s=w.maxSaved; w.maxSaved=null;
+    w.el.style.left=s.l; w.el.style.top=s.t;
+    w.el.style.width=s.w; w.el.style.height=s.h;
+  } else {
+    w.maxSaved={l:w.el.style.left,t:w.el.style.top,w:w.el.style.width,h:w.el.style.height};
+    w.el.style.left='0'; w.el.style.top='0';
+    w.el.style.width=dw+'px'; w.el.style.height=dh+'px';
+  }
+}
+
+function closeWin(id){
+  const w=wins[id]; if(!w) return;
+  w.el.remove();
+  removeTaskItem(id);
+  delete wins[id];
+  tileVisible();
+}
+
+function addTaskItem(id){
+  removeTaskItem(id);
+  const w=wins[id]; if(!w) return;
+  const tb=document.getElementById('taskbar');
+  const item=document.createElement('div');
+  item.className='task-item';
+  item.id='task-'+id;
+  item.textContent=w.emoji+' '+w.title;
+  item.onclick=()=>restoreWin(id);
+  tb.appendChild(item);
+}
+
+function removeTaskItem(id){
+  const el=document.getElementById('task-'+id);
+  if(el) el.remove();
+}
+
+// ── Tile visible windows ──────────────────────────────────────────
+// Current layout mode (default: tile-equal)
+let currentLayout='tile-equal';
+
+function setWin(id,x,y,w,h){
+  const win=wins[id]; if(!win||win.minimized) return;
+  win.el.style.left=Math.round(x)+'px'; win.el.style.top=Math.round(y)+'px';
+  win.el.style.width=Math.round(w)+'px'; win.el.style.height=Math.round(h)+'px';
+  win.maxSaved=null;
+}
+
+function tileVisible(){
+  applyLayout(currentLayout);
+}
+
+function tileAll(){
+  Object.keys(wins).forEach(id=>{ if(wins[id].minimized) restoreWin(id); });
+  applyLayout(currentLayout);
+}
+
+// ── 12 Layout algorithms ──────────────────────────────────────────
+function applyLayout(mode){
+  currentLayout=mode;
+  closeCtxMenu();
+  // Mark active in context menu
+  document.querySelectorAll('.ctx-item').forEach(el=>{
+    el.classList.toggle('active-layout', el.getAttribute('onclick')===`applyLayout('${mode}')`);
+  });
+
+  const desktop=document.getElementById('desktop');
+  const dw=desktop.clientWidth, dh=desktop.clientHeight;
+  const pad=6;
+  const visible=Object.entries(wins).filter(([,w])=>!w.minimized&&!w.maxSaved);
+  const n=visible.length; if(!n) return;
+  const ids=visible.map(([id])=>id);
+
+  // Helper: equal-grid tile
+  function equalGrid(items,x0,y0,w0,h0){
+    const c=Math.ceil(Math.sqrt(items.length)), r=Math.ceil(items.length/c);
+    const cw=Math.floor((w0-pad*(c+1))/c), ch=Math.floor((h0-pad*(r+1))/r);
+    items.forEach((id,i)=>setWin(id,x0+pad+(i%c)*(cw+pad),y0+pad+Math.floor(i/c)*(ch+pad),cw,ch));
+  }
+
+  if(mode==='free') return; // do nothing, keep current positions
+
+  if(mode==='tile-equal'){
+    equalGrid(ids,0,0,dw,dh);
+
+  } else if(mode==='focus'){
+    // First window 70% wide, rest stacked on right
+    const mainW=Math.floor(dw*0.70)-pad*2;
+    const sideW=dw-mainW-pad*3;
+    setWin(ids[0],pad,pad,mainW,dh-pad*2);
+    if(ids.length>1){
+      const rest=ids.slice(1);
+      const sh=Math.floor((dh-pad*(rest.length+1))/rest.length);
+      rest.forEach((id,i)=>setWin(id,mainW+pad*2,pad+i*(sh+pad),sideW,sh));
+    }
+
+  } else if(mode==='speaker'){
+    // First window top 62%, rest horizontal strip bottom
+    const mainH=Math.floor(dh*0.62)-pad;
+    const stripH=dh-mainH-pad*3;
+    setWin(ids[0],pad,pad,dw-pad*2,mainH);
+    if(ids.length>1){
+      const rest=ids.slice(1);
+      const sw=Math.floor((dw-pad*(rest.length+1))/rest.length);
+      rest.forEach((id,i)=>setWin(id,pad+i*(sw+pad),mainH+pad*2,sw,stripH));
+    }
+
+  } else if(mode==='lr-split'){
+    // Left 58% videos, right 40% sidebar/last window
+    const lw=Math.floor(dw*0.58)-pad;
+    const rw=dw-lw-pad*3;
+    const leftIds=ids.slice(0,-1).length?ids.slice(0,-1):ids;
+    const rightId=ids.length>1?ids[ids.length-1]:null;
+    equalGrid(leftIds,0,0,lw+pad,dh);
+    if(rightId) setWin(rightId,lw+pad*2,pad,rw,dh-pad*2);
+
+  } else if(mode==='screen-main'){
+    // Screen window 78% left, others stacked right
+    const screenId=ids.find(id=>id==='screen')||ids[0];
+    const others=ids.filter(id=>id!==screenId);
+    const mainW=Math.floor(dw*0.78)-pad*2;
+    const sideW=dw-mainW-pad*3;
+    setWin(screenId,pad,pad,mainW,dh-pad*2);
+    if(others.length){
+      const sh=Math.floor((dh-pad*(others.length+1))/others.length);
+      others.forEach((id,i)=>setWin(id,mainW+pad*2,pad+i*(sh+pad),sideW,sh));
+    }
+
+  } else if(mode==='video-main'){
+    // Video player 100% top 65%, others strip bottom
+    const vpId=ids.find(id=>id==='videoplayer')||ids[0];
+    const others=ids.filter(id=>id!==vpId);
+    const mainH=Math.floor(dh*0.65)-pad;
+    const stripH=dh-mainH-pad*3;
+    setWin(vpId,pad,pad,dw-pad*2,mainH);
+    if(others.length){
+      const sw=Math.floor((dw-pad*(others.length+1))/others.length);
+      others.forEach((id,i)=>setWin(id,pad+i*(sw+pad),mainH+pad*2,sw,stripH));
+    }
+
+  } else if(mode==='waterfall'){
+    // Variable-height cascade left-to-right
+    const colW=Math.floor((dw-pad*(Math.min(n,4)+1))/Math.min(n,4));
+    ids.forEach((id,i)=>{
+      const col=i%4;
+      const h=Math.floor(dh*(0.5+Math.random()*0.4));
+      const top=Math.random()>0.5?pad:dh-h-pad;
+      setWin(id,pad+col*(colW+pad),top,colW,Math.min(h,dh-pad*2));
+    });
+    // Redo deterministically
+    const heights=[0.9,0.55,0.45,0.9,0.7,0.5,0.6,0.8];
+    const tops=[0,1,0,0,1,0,1,0];
+    ids.forEach((id,i)=>{
+      const col=i%4, h=Math.floor(dh*heights[i%8]-pad*2);
+      setWin(id,pad+col*(Math.floor((dw-pad*5)/4)+pad),tops[i%8]===0?pad:dh-h-pad,Math.floor((dw-pad*5)/4),h);
+    });
+
+  } else if(mode==='3col'){
+    // Three equal columns
+    const cw=Math.floor((dw-pad*4)/3);
+    const rows=Math.ceil(n/3);
+    const rh=Math.floor((dh-pad*(rows+1))/rows);
+    ids.forEach((id,i)=>{
+      const col=i%3, row=Math.floor(i/3);
+      // Sidebar goes to last column
+      const actualId=id==='sidebar'?id:id;
+      setWin(id,pad+col*(cw+pad),pad+row*(rh+pad),cw,rh);
+    });
+
+  } else if(mode==='2-1'){
+    // First window fills left 62%, right side has 2 equal windows
+    const lw=Math.floor(dw*0.62)-pad*2;
+    const rw=dw-lw-pad*3;
+    setWin(ids[0],pad,pad,lw,dh-pad*2);
+    const right=ids.slice(1,3);
+    if(right.length){
+      const sh=Math.floor((dh-pad*(right.length+1))/right.length);
+      right.forEach((id,i)=>setWin(id,lw+pad*2,pad+i*(sh+pad),rw,sh));
+    }
+    // remaining go below in equal grid
+    if(ids.length>3) equalGrid(ids.slice(3),0,Math.floor(dh*0.6),dw,Math.floor(dh*0.4));
+
+  } else if(mode==='sidebar-fixed'){
+    // Sidebar pinned right 22%, videos tile the left 76%
+    const sbId=ids.find(id=>id==='sidebar');
+    const vidIds=ids.filter(id=>id!=='sidebar');
+    const sbW=Math.floor(dw*0.22);
+    const vidW=dw-sbW-pad*3;
+    if(sbId) setWin(sbId,dw-sbW-pad,pad,sbW,dh-pad*2);
+    if(vidIds.length) equalGrid(vidIds,0,0,vidW+pad,dh);
+
+  } else if(mode==='cascade'){
+    // Windows stacked with offset — like classic Windows cascade
+    const step=28, winW=Math.floor(dw*0.55), winH=Math.floor(dh*0.6);
+    const maxOffset=Math.min(step*(n-1), dw-winW-pad, dh-winH-pad);
+    const actualStep=n>1?Math.floor(maxOffset/(n-1)):0;
+    ids.forEach((id,i)=>setWin(id,pad+i*actualStep,pad+i*actualStep,winW,winH));
+    // Bring last one to top
+    if(ids.length>0) focusWin(ids[ids.length-1]);
+
+  } else if(mode==='tile-equal'){
+    equalGrid(ids,0,0,dw,dh);
+  }
+
+  // Update layout picker UI
+  document.querySelectorAll('.lp-btn').forEach(b=>{
+    b.classList.toggle('lp-active',b.dataset.layout===mode);
+  });
+}
+
+// ── Drag ──────────────────────────────────────────────
+function startDrag(e,id){
+  if(e.target.classList.contains('fwin-btn')) return;
+  focusWin(id);
+  const el=wins[id].el;
+  const rect=el.getBoundingClientRect();
+  dragState={id,startX:e.clientX,startY:e.clientY,origL:rect.left,origT:rect.top};
+  e.preventDefault();
+}
+
+document.addEventListener('mousemove',e=>{
+  if(dragState){
+    const w=wins[dragState.id]; if(!w) return;
+    const dx=e.clientX-dragState.startX, dy=e.clientY-dragState.startY;
+    const desktop=document.getElementById('desktop');
+    const dw=desktop.clientWidth, dh=desktop.clientHeight;
+    const el=w.el;
+    let newL=dragState.origL+dx, newT=dragState.origT+dy;
+    newL=Math.max(0,Math.min(dw-80,newL));
+    newT=Math.max(0,Math.min(dh-40,newT));
+    el.style.left=newL+'px'; el.style.top=newT+'px';
+    w.maxSaved=null;
+  }
+  if(resizeState){
+    const w=wins[resizeState.id]; if(!w) return;
+    const dx=e.clientX-resizeState.startX, dy=e.clientY-resizeState.startY;
+    const newW=Math.max(200,resizeState.origW+dx);
+    const newH=Math.max(140,resizeState.origH+dy);
+    w.el.style.width=newW+'px'; w.el.style.height=newH+'px';
+    w.maxSaved=null;
+  }
+});
+
+document.addEventListener('mouseup',()=>{dragState=null;resizeState=null;});
+
+function startResize(e,id){
+  focusWin(id);
+  const el=wins[id].el;
+  resizeState={id,startX:e.clientX,startY:e.clientY,origW:el.offsetWidth,origH:el.offsetHeight};
+  e.preventDefault(); e.stopPropagation();
+}
+
+// ── Touch support ─────────────────────────────────────
+document.addEventListener('touchmove',e=>{
+  const t=e.touches[0];
+  if(dragState){
+    const w=wins[dragState.id]; if(!w) return;
+    const dx=t.clientX-dragState.startX, dy=t.clientY-dragState.startY;
+    w.el.style.left=(dragState.origL+dx)+'px'; w.el.style.top=(dragState.origT+dy)+'px';
+    w.maxSaved=null;
+  }
+},{passive:true});
+document.addEventListener('touchend',()=>{dragState=null;resizeState=null;});
+
+// ═══════════════════════════════════════════════════════
+//  CREATE SPECIFIC WINDOWS
+// ═══════════════════════════════════════════════════════
+
+// Video tile window for a participant
+function createVideoWin(pid,name,isSelf,pIsHost){
+  const id='vid-'+pid;
+  const c=getColor(pid);
+  const init=name.charAt(0).toUpperCase();
+  const desktop=document.getElementById('desktop');
+  const dw=desktop.clientWidth,dh=desktop.clientHeight;
+  const allIds=Object.keys(wins);
+  const n=allIds.length;
+  // Default position: staggered
+  const col=n%4, row=Math.floor(n/4);
+  const opts={x:40+col*30,y:40+row*30,w:280,h:200,closable:false};
+  const el=createWin(id,name+(isSelf?' (我)':''),pIsHost?'👑':'👤',opts);
+  if(!el) return;
+
+  const body=el.querySelector('.fwin-body');
+  body.innerHTML='';
+  body.style.position='relative';
+
+  // video
+  const vid=document.createElement('video');
+  vid.className='vtile-video'; vid.autoplay=true; vid.playsInline=true;
+  if(isSelf) vid.muted=true;
+  vid.id='vid-el-'+pid;
+  body.appendChild(vid);
+
+  // cam-off
+  const co=document.createElement('div');
+  co.className='cam-off'; co.id='camoff-'+pid;
+  co.style.display='none';
+  co.innerHTML=`<div class="av" style="background:${c.bg};color:${c.fg}">${init}</div><div class="av-name">${esc(name)}</div>`;
+  body.appendChild(co);
+
+  // speaking ring
+  const sr=document.createElement('div'); sr.className='speaking-ring'; sr.id='sring-'+pid;
+  body.appendChild(sr);
+
+  // overlay
+  const ov=document.createElement('div'); ov.className='vtile-overlay';
+  const nm=document.createElement('div'); nm.className='vtile-name';
+  nm.innerHTML=`${pIsHost?'<span class="badge badge-host">主持</span>':''}${isSelf?'<span class="badge badge-you">我</span>':''}${esc(name)}`;
+  const ctrls=document.createElement('div'); ctrls.className='vtile-ctrls'; ctrls.id='tctrls-'+pid;
+  ov.appendChild(nm); ov.appendChild(ctrls);
+  body.appendChild(ov);
+
+  // Connect stream
+  if(isSelf&&localStream){
+    vid.srcObject=localStream; vid.play().catch(()=>{});
+    if(!camOn){co.style.display='flex';vid.style.display='none';}
+  }
+
+  wins['vid-'+pid].title=name+(isSelf?' (我)':'');
+  tileVisible();
+}
+
+function attachStream(pid,stream,tries=0){
+  remoteStreams[pid]=stream;
+  const vid=document.getElementById('vid-el-'+pid);
+  if(vid){
+    vid.srcObject=stream; vid.play().catch(()=>{});
+    const co=document.getElementById('camoff-'+pid);
+    if(co) co.style.display='none';
+    vid.style.display='block';
+  } else if(tries<30) setTimeout(()=>attachStream(pid,stream,tries+1),250);
+}
+
+function removeVideoWin(pid){
+  closeWin('vid-'+pid);
+  delete remoteStreams[pid];
+}
+
+// Screen share window
+function createScreenWin(name,stream){
+  // Host can close (triggers stopScreenShare+broadcast), participants close locally
+  const opts={x:0,y:0,w:560,h:360,
+    onClose: screenSharing ? stopScreenShare : ()=>closeWin('screen')};
+  const el=createWin('screen','屏幕共享','🖥️',opts);
+  const body=el.querySelector('.fwin-body');
+  body.innerHTML='';
+  const vid=document.createElement('video');
+  vid.className='screen-video-el'; vid.id='screenVideoEl';
+  vid.autoplay=true; vid.playsInline=true;
+  if(stream) vid.srcObject=stream;
+  body.appendChild(vid);
+  // Stop button for self
+  if(screenSharing){
+    const stopBtn=document.createElement('button');
+    stopBtn.className='btn btn-sm';
+    stopBtn.style.cssText='position:absolute;top:.5rem;right:.5rem;background:var(--danger);border:none;color:#fff;border-radius:6px;padding:.3rem .65rem;font-size:.72rem;cursor:pointer;z-index:5';
+    stopBtn.textContent='⏹ 停止共享';
+    stopBtn.onclick=stopScreenShare;
+    body.appendChild(stopBtn);
+  }
+  const label=document.createElement('div');
+  label.style.cssText='position:absolute;top:.5rem;left:.5rem;background:rgba(0,0,0,.6);color:#fff;font-size:.72rem;padding:.2rem .5rem;border-radius:5px';
+  label.textContent=name+' 的屏幕';
+  body.appendChild(label);
+  tileVisible();
+}
+
+// Sidebar (participants + chat + files + video)
+function openSidebarWin(){
+  const id='sidebar';
+  if(wins[id]&&!wins[id].minimized){focusWin(id);return;}
+  const desktop=document.getElementById('desktop');
+  const dw=desktop.clientWidth,dh=desktop.clientHeight;
+  const opts={x:dw-290,y:0,w:280,h:dh,closable:false};
+  const el=createWin(id,'聊天 / 文件 / 视频','💬',opts);
+  const body=el.querySelector('.fwin-body');
+  body.style.flexDirection='column';
+  body.style.display='flex';
+  body.innerHTML=`
+    <div class="sidebar-tabs">
+      <button class="stab active" onclick="swtab('participants')">👥</button>
+      <button class="stab" onclick="swtab('chat')">💬</button>
+      <button class="stab" onclick="swtab('files')">📁</button>
+      <button class="stab" onclick="swtab('video')">🎬</button>
+    </div>
+    <div class="sidebar-panel active" id="tabParticipants"><div id="participantList"></div></div>
+    <div class="sidebar-panel" id="tabChat"><div id="chatMessages" class="chat-messages"></div></div>
+    <div class="sidebar-panel" id="tabFiles">
+      <div class="file-upload-area" id="dropZone"
+        onclick="document.getElementById('fileInput').click()"
+        ondragover="event.preventDefault();this.classList.add('drag')"
+        ondragleave="this.classList.remove('drag')"
+        ondrop="handleFileDrop(event)">
+        📎 点击或拖拽文件上传<br><span style="font-size:.68rem">最大 50MB</span>
+      </div>
+      <div id="uploadProgress" style="display:none" class="upload-progress"><div class="upload-bar" id="uploadBar"></div></div>
+      <div id="fileList"></div>
+    </div>
+    <div class="sidebar-panel" id="tabVideo">
+      <p style="font-size:.75rem;color:var(--muted);margin-bottom:.5rem">主持人上传或粘贴 URL，所有人同步播放</p>
+      <div id="videoHostControls" style="display:none">
+        <div class="video-url-row">
+          <input id="videoUrlInput" placeholder="粘贴视频 URL (.mp4/.webm)">
+          <button class="btn btn-sm btn-primary" onclick="loadVideoUrl()">▶</button>
+        </div>
+        <div class="file-upload-area" style="padding:.6rem;font-size:.74rem"
+          onclick="document.getElementById('videoFileInput').click()"
+          ondragover="event.preventDefault();this.classList.add('drag')"
+          ondragleave="this.classList.remove('drag')"
+          ondrop="handleVideoFileDrop(event)">
+          🎬 点击或拖拽视频文件<br><span style="font-size:.66rem">mp4/webm，最大200MB</span>
+        </div>
+        <div id="videoUploadProgress" style="display:none" class="upload-progress"><div class="upload-bar" id="videoUploadBar"></div></div>
+      </div>
+      <div id="videoFileList"></div>
+      <div class="host-only-note" id="videoHostNote">仅主持人可控制播放</div>
+    </div>
+    <div class="chat-input-row" id="chatInputRow" style="display:none">
+      <input class="chat-input" id="chatInput" placeholder="发送消息..." maxlength="500" onkeydown="if(event.key==='Enter')sendChat()">
+      <button class="chat-send" onclick="sendChat()">➤</button>
+    </div>`;
+  if(isHost){
+    document.getElementById('videoHostControls').style.display='block';
+    document.getElementById('videoHostNote').style.display='none';
+  }
+  tileVisible();
+}
+
+// Video player window
+function createVideoPlayerWin(videoData){
+  const id='videoplayer';
+  const desktop=document.getElementById('desktop');
+  const dw=desktop.clientWidth,dh=desktop.clientHeight;
+  // onClose: host broadcasts, participants just close locally
+  const opts={x:Math.floor(dw/2)-220,y:Math.floor(dh/2)-170,w:440,h:320,
+    onClose: isHost ? closeVideoPlayer : ()=>closeWin('videoplayer')};
+  const el=createWin(id,videoData.name||'视频','🎬',opts);
+  const body=el.querySelector('.fwin-body');
+  body.innerHTML='';
+
+  const vid=document.createElement('video');
+  vid.id='meetingVideo'; vid.className='vplayer-video';
+  vid.preload='metadata';
+  body.appendChild(vid);
+
+  if(isHost){
+    vid.controls=true;
+    const old=document.getElementById('meetingVideo');
+    // attach events after appending
+    requestAnimationFrame(()=>{
+      const v=document.getElementById('meetingVideo');
+      if(!v) return;
+      v.src=videoData.url;
+      v.oncanplay=()=>{if(videoData.playing) v.play().catch(()=>{});if(videoData.position) v.currentTime=videoData.position;};
+      v.onplay=()=>wsSend({type:'video_control',action:'play',position:v.currentTime});
+      v.onpause=()=>wsSend({type:'video_control',action:'pause',position:v.currentTime});
+      v.onseeked=()=>wsSend({type:'video_control',action:'seek',position:v.currentTime});
+      v.onerror=()=>showToast('❌ 视频加载失败');
+    });
+  } else {
+    vid.controls=false;
+    requestAnimationFrame(()=>{
+      const v=document.getElementById('meetingVideo');
+      if(!v) return;
+      v.src=videoData.url;
+      v.onerror=()=>showToast('❌ 视频加载失败');
+      if(videoData.playing) v.play().catch(()=>{});
+    });
+  }
+  focusWin(id);
+  tileVisible();
+}
+
+function getVideoEl(){return document.getElementById('meetingVideo');}
+
+// ═══════════════════════════════════════════════════════
+//  LOBBY
+// ═══════════════════════════════════════════════════════
+function genRoomId(){return Math.random().toString(36).slice(2,8).toUpperCase();}
+
+async function joinRoom(){
+  const name=document.getElementById('lbName').value.trim();
+  const rid=document.getElementById('lbRoom').value.trim()||genRoomId();
+  const role=document.getElementById('lbRole').value;
+  if(!name){setLobbyStatus('请输入你的名字','err');return;}
+  myName=name; roomId=rid; isHost=(role==='host');
+  setLobbyStatus('正在获取摄像头...','info');
+  try{localStream=await navigator.mediaDevices.getUserMedia({video:true,audio:true});}
+  catch(e){try{localStream=await navigator.mediaDevices.getUserMedia({audio:true,video:false});}catch(e2){localStream=new MediaStream();}}
+  setLobbyStatus('正在连接服务器...','info');
+  connectWS();
+}
+function setLobbyStatus(msg,type='info'){
+  document.getElementById('lbStatus').innerHTML=`<div class="status-msg ${type}">${msg}</div>`;
+}
+
+// ═══════════════════════════════════════════════════════
+//  WEBSOCKET
+// ═══════════════════════════════════════════════════════
+function connectWS(){
+  const proto=location.protocol==='https:'?'wss:':'ws:';
+  ws=new WebSocket(`${proto}//${location.host}/ws/${roomId}`);
+  ws.onopen=()=>ws.send(JSON.stringify({type:'join',name:myName,host:isHost}));
+  ws.onmessage=async(ev)=>await handleMsg(JSON.parse(ev.data));
+  ws.onclose=()=>showToast('🔌 连接已断开');
+  ws.onerror=()=>setLobbyStatus('❌ 无法连接服务器，请确认已运行 python server.py','err');
+}
+function wsSend(obj){if(ws&&ws.readyState===WebSocket.OPEN)ws.send(JSON.stringify(obj));}
+
+// ═══════════════════════════════════════════════════════
+//  MESSAGE HANDLER
+// ═══════════════════════════════════════════════════════
+async function handleMsg(msg){
+  switch(msg.type){
+    case 'joined':
+      myPid=msg.pid; isHost=msg.is_host; roomLocked=msg.locked;
+      enterRoom(msg.participants);
+      (msg.chat_log||[]).forEach(e=>appendChat(e));
+      renderFileList(msg.shared_files||[]);
+      if(msg.current_video) createVideoPlayerWin(msg.current_video);
+      for(const p of msg.participants) if(p.pid!==myPid) await callPeer(p.pid);
+      break;
+
+    case 'participant_joined':
+      updateParticipantState(msg.participants);
+      createVideoWin(msg.participant.pid,msg.participant.name,false,msg.participant.is_host);
+      showToast(`👋 ${msg.participant.name} 加入了会议`);
+      break;
+
+    case 'participant_left':
+      cleanupPeer(msg.pid);
+      removeVideoWin(msg.pid);
+      updateParticipantState(msg.participants);
+      break;
+
+    case 'participant_updated':
+      updateParticipantState(msg.participants);
+      break;
+
+    case 'offer': await handleOffer(msg.from,msg); break;
+    case 'answer': await handleAnswer(msg.from,msg); break;
+    case 'ice': await handleIce(msg.from,msg); break;
+
+    case 'chat':
+      appendChat(msg.entry);
+      if(msg.entry.pid!==myPid) showToast(`💬 ${msg.entry.name}: ${msg.entry.text.slice(0,28)}`);
+      break;
+
+    case 'screen_share_state':
+      handleRemoteScreenShare(msg.pid,msg.name,msg.sharing,msg.participants);
+      break;
+
+    case 'file_shared':
+      appendFileItem(msg.file);
+      showToast(`📁 ${msg.file.uploader} 分享了: ${msg.file.name}`);
+      break;
+
+    case 'video_load':
+      createVideoPlayerWin(msg.video);
+      showToast(`🎬 主持人播放: ${msg.video.name}`);
+      break;
+
+    case 'video_control':
+      syncVideoControl(msg.action,msg.position);
+      break;
+
+    case 'video_close':
+      // Stop video element before closing to prevent audio leak
+      {const v=document.getElementById('meetingVideo');if(v){v.pause();v.src='';}}
+      closeWin('videoplayer');
+      showToast('🎬 主持人关闭了视频播放');
+      break;
+
+    case 'force_mute_mic':
+      micOn=!msg.muted; applyMicState(); updateControls();
+      showToast(msg.muted?'🔇 主持人关闭了你的麦克风':'🎤 主持人开启了你的麦克风');
+      break;
+
+    case 'force_mute_cam':
+      camOn=!msg.muted; applyCamState(); updateControls();
+      showToast(msg.muted?'📷 主持人关闭了你的摄像头':'📷 主持人开启了你的摄像头');
+      break;
+
+    case 'kicked':
+      alert('你已被主持人移出会议'); leaveRoom(true); break;
+
+    case 'room_locked':
+      roomLocked=msg.locked; updateLockUI();
+      showToast(msg.locked?'🔒 会议室已锁定':'🔓 会议室已解锁');
+      break;
+
+    case 'meeting_ended':
+      showToast('🏁 主持人已结束会议'); setTimeout(()=>leaveRoom(true),2000); break;
+
+    case 'meeting_summary':
+      showSummary(msg.summary,msg.duration); break;
+
+    case 'error':
+      alert(msg.message); break;
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//  ENTER ROOM
+// ═══════════════════════════════════════════════════════
+function enterRoom(participants){
+  document.getElementById('lobby').style.display='none';
+  document.getElementById('room').style.display='flex';
+  document.getElementById('room').style.flexDirection='column';
+  document.getElementById('roomIdDisplay').textContent=roomId;
+  if(isHost){
+    document.getElementById('lockWrap').style.display='block';
+    document.getElementById('endWrap').style.display='block';
+  }
+  updateControls(); updateLockUI(); startTimer();
+
+  // Create my own video window
+  createVideoWin(myPid,myName,true,isHost);
+
+  // Create windows for existing participants
+  for(const p of participants){
+    if(p.pid!==myPid) createVideoWin(p.pid,p.name,false,p.is_host);
+  }
+
+  // Open sidebar by default
+  openSidebarWin();
+  updateParticipantState(participants);
+  showToast(`✅ 已加入会议室 ${roomId}`);
+}
+
+// ═══════════════════════════════════════════════════════
+//  PARTICIPANTS
+// ═══════════════════════════════════════════════════════
+function updateParticipantState(participants){
+  document.getElementById('pCount').textContent=participants.length;
+  renderParticipants(participants);
+  // Update cam-off state for each participant window
+  for(const p of participants){
+    if(p.pid===myPid) continue;
+    const vid=document.getElementById('vid-el-'+p.pid);
+    const co=document.getElementById('camoff-'+p.pid);
+    if(vid&&co){
+      if(!p.cam_on){co.style.display='flex';vid.style.display='none';}
+      else{co.style.display='none';vid.style.display='block';}
+    }
+    // Update host control buttons in tile
+    if(isHost){
+      const ctrls=document.getElementById('tctrls-'+p.pid);
+      if(ctrls) ctrls.innerHTML=`
+        <button class="vtile-btn ${p.mic_on?'dim':'red'}" onclick="hostMuteMic('${p.pid}',${p.mic_on})">${p.mic_on?'🎤':'🔇'}</button>
+        <button class="vtile-btn ${p.cam_on?'dim':'red'}" onclick="hostMuteCam('${p.pid}',${p.cam_on})">${p.cam_on?'📷':'🚫'}</button>
+        <button class="vtile-btn red" onclick="hostKick('${p.pid}')">🚪</button>`;
+    }
+    // Update window title bar for host indicator
+    const titleEl=document.querySelector(`#fwin-vid-${p.pid} .fwin-title`);
+    if(titleEl) titleEl.textContent=p.name+(p.is_host?' 👑':'');
+  }
+}
+
+function renderParticipants(participants){
+  const list=document.getElementById('participantList');
+  if(!list) return;
+  list.innerHTML='';
+  [...participants].sort((a,b)=>{
+    if(a.is_host) return -1; if(b.is_host) return 1;
+    if(a.pid===myPid) return -1; if(b.pid===myPid) return 1; return 0;
+  }).forEach(p=>{
+    const c=getColor(p.pid); const isSelf=p.pid===myPid;
+    const div=document.createElement('div'); div.className='pitem';
+    div.innerHTML=`
+      <div class="pav" style="background:${c.bg};color:${c.fg}">${p.name.charAt(0).toUpperCase()}</div>
+      <div class="pinfo">
+        <div class="pname">${esc(p.name)}
+          ${isSelf?'<span class="badge badge-you">我</span>':''}
+          ${p.is_host?'<span class="badge badge-host">主持</span>':''}
+          ${p.screen_sharing?'🖥️':''}
+        </div>
+        <div class="pstatus">${p.mic_on?'🎤':'🔇'} ${p.cam_on?'📷':'🚫'}</div>
+      </div>
+      <div class="pactions" id="pact-${p.pid}"></div>`;
+    if(isHost&&!isSelf){
+      const a=div.querySelector(`#pact-${p.pid}`);
+      a.innerHTML=`
+        <button class="paction-btn ${p.mic_on?'':'off'}" onclick="hostMuteMic('${p.pid}',${p.mic_on})">${p.mic_on?'🎤':'🔇'}</button>
+        <button class="paction-btn ${p.cam_on?'':'off'}" onclick="hostMuteCam('${p.pid}',${p.cam_on})">${p.cam_on?'📷':'🚫'}</button>
+        <button class="paction-btn off" onclick="hostKick('${p.pid}')">🚪</button>`;
+    }
+    list.appendChild(div);
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+//  SIDEBAR TABS
+// ═══════════════════════════════════════════════════════
+function swtab(tab){
+  const tabs=['participants','chat','files','video'];
+  document.querySelectorAll('.stab').forEach((b,i)=>b.classList.toggle('active',tabs[i]===tab));
+  tabs.forEach(t=>{
+    const el=document.getElementById('tab'+t.charAt(0).toUpperCase()+t.slice(1));
+    if(el) el.style.display=t===tab?'block':'none';
+  });
+  const ci=document.getElementById('chatInputRow');
+  if(ci) ci.style.display=tab==='chat'?'flex':'none';
+  if(tab==='chat'){const ci2=document.getElementById('chatInput');if(ci2) ci2.focus();}
+}
+
+// ═══════════════════════════════════════════════════════
+//  WEBRTC
+// ═══════════════════════════════════════════════════════
+function createPC(targetPid){
+  if(peerConnections[targetPid]) return peerConnections[targetPid];
+  const pc=new RTCPeerConnection({iceServers:ICE});
+  peerConnections[targetPid]=pc; iceBuf[targetPid]=[];
+  if(localStream) localStream.getTracks().forEach(t=>pc.addTrack(t,localStream));
+  pc.onicecandidate=ev=>{if(ev.candidate) wsSend({type:'ice',target:targetPid,candidate:ev.candidate});};
+  pc.ontrack=ev=>{
+    const stream=ev.streams[0]||new MediaStream([ev.track]);
+    attachStream(targetPid,stream);
+  };
+  pc.onconnectionstatechange=()=>{if(pc.connectionState==='failed') cleanupPeer(targetPid);};
+  return pc;
+}
+
+async function flushIce(pid){
+  const pc=peerConnections[pid]; if(!pc) return;
+  for(const c of(iceBuf[pid]||[])) await pc.addIceCandidate(new RTCIceCandidate(c)).catch(()=>{});
+  iceBuf[pid]=[];
+}
+
+async function callPeer(pid){
+  const pc=createPC(pid);
+  try{
+    const offer=await pc.createOffer({offerToReceiveAudio:true,offerToReceiveVideo:true});
+    await pc.setLocalDescription(offer);
+    wsSend({type:'offer',target:pid,sdp:pc.localDescription});
+  }catch(e){console.error('callPeer',e);}
+}
+
+async function handleOffer(fromPid,msg){
+  if(!wins['vid-'+fromPid]) createVideoWin(fromPid,msg.fromName||fromPid,false,false);
+  const pc=createPC(fromPid);
+  try{
+    if(pc.signalingState!=='stable') return;
+    await pc.setRemoteDescription(new RTCSessionDescription({type:'offer',sdp:msg.sdp.sdp}));
+    await flushIce(fromPid);
+    const answer=await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+    wsSend({type:'answer',target:fromPid,sdp:pc.localDescription});
+  }catch(e){console.error('handleOffer',e);}
+}
+
+async function handleAnswer(fromPid,msg){
+  const pc=peerConnections[fromPid]; if(!pc) return;
+  try{
+    if(pc.signalingState==='have-local-offer'){
+      await pc.setRemoteDescription(new RTCSessionDescription({type:'answer',sdp:msg.sdp.sdp}));
+      await flushIce(fromPid);
+    }
+  }catch(e){console.error('handleAnswer',e);}
+}
+
+async function handleIce(fromPid,msg){
+  const pc=peerConnections[fromPid]; if(!pc||!msg.candidate) return;
+  if(pc.remoteDescription) await pc.addIceCandidate(new RTCIceCandidate(msg.candidate)).catch(()=>{});
+  else{if(!iceBuf[fromPid]) iceBuf[fromPid]=[];iceBuf[fromPid].push(msg.candidate);}
+}
+
+function cleanupPeer(pid){
+  const pc=peerConnections[pid]; if(pc){pc.close();delete peerConnections[pid];}
+  delete remoteStreams[pid]; delete iceBuf[pid];
+}
+
+// ═══════════════════════════════════════════════════════
+//  MY CONTROLS
+// ═══════════════════════════════════════════════════════
+function toggleMic(){
+  micOn=!micOn; applyMicState(); updateControls();
+  wsSend({type:'media_state',mic_on:micOn,cam_on:camOn});
+  showToast(micOn?'🎤 麦克风已开启':'🔇 已静音');
+}
+function toggleCam(){
+  camOn=!camOn; applyCamState(); updateControls();
+  wsSend({type:'media_state',mic_on:micOn,cam_on:camOn});
+  showToast(camOn?'📷 摄像头已开启':'📷 摄像头已关闭');
+}
+function applyMicState(){if(localStream) localStream.getAudioTracks().forEach(t=>t.enabled=micOn);}
+function applyCamState(){
+  if(localStream) localStream.getVideoTracks().forEach(t=>t.enabled=camOn);
+  const vid=document.getElementById('vid-el-'+myPid);
+  const co=document.getElementById('camoff-'+myPid);
+  if(vid) vid.style.display=camOn?'block':'none';
+  if(co) co.style.display=camOn?'none':'flex';
+}
+function updateControls(){
+  const mb=document.getElementById('micBtn');
+  mb.textContent=micOn?'🎤':'🔇'; mb.className='ctrl-btn'+(micOn?'':' off');
+  document.getElementById('camBtn').className='ctrl-btn'+(camOn?'':' off');
+  document.getElementById('screenBtn').className='ctrl-btn'+(screenSharing?' active':'');
+}
+
+// ═══════════════════════════════════════════════════════
+//  SCREEN SHARE
+// ═══════════════════════════════════════════════════════
+async function toggleScreenShare(){
+  if(!screenSharing){
+    try{
+      screenStream=await navigator.mediaDevices.getDisplayMedia({video:true,audio:true});
+      screenSharing=true;
+      const vt=screenStream.getVideoTracks()[0];
+      Object.values(peerConnections).forEach(pc=>{
+        const s=pc.getSenders().find(s=>s.track&&s.track.kind==='video');
+        if(s) s.replaceTrack(vt).catch(()=>{});
+      });
+      createScreenWin(myName,screenStream);
+      wsSend({type:'screen_share_state',sharing:true});
+      vt.onended=()=>stopScreenShare();
+      updateControls(); showToast('🖥️ 屏幕共享已开启');
+    }catch(e){showToast('⚠️ 无法共享屏幕');}
+  } else { stopScreenShare(); }
+}
+
+function stopScreenShare(){
+  if(!screenSharing) return;
+  if(screenStream){screenStream.getTracks().forEach(t=>t.stop());screenStream=null;}
+  screenSharing=false;
+  if(localStream){
+    const ct=localStream.getVideoTracks()[0];
+    Object.values(peerConnections).forEach(pc=>{
+      const s=pc.getSenders().find(s=>s.track&&s.track.kind==='video');
+      if(s&&ct) s.replaceTrack(ct).catch(()=>{});
+    });
+  }
+  closeWin('screen');
+  wsSend({type:'screen_share_state',sharing:false});
+  updateControls(); showToast('🖥️ 屏幕共享已停止');
+}
+
+function handleRemoteScreenShare(pid,name,sharing,participants){
+  updateParticipantState(participants);
+  if(sharing&&pid!==myPid){
+    const stream=remoteStreams[pid];
+    createScreenWin(name,stream);
+    // Attach stream if already available, else retry
+    const tryAttach=(tries=0)=>{
+      const el=document.getElementById('screenVideoEl');
+      if(el&&remoteStreams[pid]){el.srcObject=remoteStreams[pid];}
+      else if(tries<20) setTimeout(()=>tryAttach(tries+1),200);
+    };
+    tryAttach();
+    showToast(`🖥️ ${name} 开始共享屏幕`);
+  } else {
+    // Sharing stopped: close screen window for everyone except the sharer themselves
+    if(!screenSharing){
+      // Stop any playing video in screen window to avoid audio ghost
+      const sv=document.getElementById('screenVideoEl');
+      if(sv){sv.srcObject=null;}
+      closeWin('screen');
+    }
+    showToast(`🖥️ ${name} 停止了屏幕共享`);
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//  HOST CONTROLS
+// ═══════════════════════════════════════════════════════
+function hostMuteMic(pid,on){wsSend({type:'host_mute_mic',target:pid,muted:on});}
+function hostMuteCam(pid,on){wsSend({type:'host_mute_cam',target:pid,muted:on});}
+function hostKick(pid){if(confirm('确定移出该参与者？')) wsSend({type:'host_kick',target:pid});}
+function toggleLock(){roomLocked=!roomLocked; wsSend({type:'host_lock',locked:roomLocked});}
+function updateLockUI(){
+  document.getElementById('lockBadge').className='lock-badge'+(roomLocked?' on':'');
+  const btn=document.getElementById('lockBtn');
+  if(btn){btn.textContent=roomLocked?'🔒':'🔓'; btn.className='ctrl-btn'+(roomLocked?' locked-btn':'');}
+}
+function endMeeting(){
+  if(!confirm('确定结束会议？所有人将被移出，并生成会议纪要。')) return;
+  wsSend({type:'end_meeting'});
+  document.getElementById('sumLoading').style.display='flex';
+  document.getElementById('sumBody').style.display='none';
+  openModal('summaryOverlay');
+}
+
+// ═══════════════════════════════════════════════════════
+//  FILE SHARING
+// ═══════════════════════════════════════════════════════
+function handleFileDrop(ev){
+  ev.preventDefault();
+  document.getElementById('dropZone').classList.remove('drag');
+  const file=ev.dataTransfer.files[0]; if(file) uploadFileObj(file);
+}
+function uploadFile(input){const f=input.files[0];if(f){uploadFileObj(f);input.value='';}}
+
+async function uploadFileObj(file,isVideo=false){
+  const maxSize=isVideo?200:50;
+  if(file.size>maxSize*1024*1024){showToast(`⚠️ 文件不能超过 ${maxSize}MB`);return;}
+  const progId=isVideo?'videoUploadProgress':'uploadProgress';
+  const barId=isVideo?'videoUploadBar':'uploadBar';
+  const prog=document.getElementById(progId);
+  const bar=document.getElementById(barId);
+  if(prog) prog.style.display='block';
+  if(bar) bar.style.width='0%';
+
+  const fd=new FormData();
+  fd.append('file',file); fd.append('uploader',myName);
+  const xhr=new XMLHttpRequest();
+  xhr.upload.onprogress=ev=>{if(ev.lengthComputable&&bar) bar.style.width=(ev.loaded/ev.total*100)+'%';};
+  xhr.onload=()=>{
+    if(prog) prog.style.display='none';
+    if(xhr.status===200) showToast(isVideo?'✅ 视频上传成功，双击列表中的文件名播放':'✅ 文件上传成功');
+    else showToast('❌ 上传失败');
+  };
+  xhr.open('POST',`/upload/${roomId}`);
+  xhr.send(fd);
+}
+
+function renderFileList(files){
+  const list=document.getElementById('fileList'); if(list) list.innerHTML='';
+  uploadedVideos.length=0;
+  files.forEach(f=>appendFileItem(f));
+  if(!uploadedVideos.length) renderVideoFileList();
+}
+
+function appendFileItem(f){
+  const list=document.getElementById('fileList');
+  if(!list) return;
+  const ext=f.name.split('.').pop().toLowerCase();
+  const isVid=!!ext.match(/^(mp4|webm|mov|avi|mkv|m4v)$/);
+  const icon=ext==='pdf'?'📄':ext.match(/jpe?g|png|gif|webp/)?'🖼️':isVid?'🎬':ext.match(/mp3|wav/)?'🎵':ext.match(/zip|rar/)?'📦':'📎';
+  const size=f.size>1048576?(f.size/1048576).toFixed(1)+'MB':(f.size/1024).toFixed(0)+'KB';
+  const div=document.createElement('div'); div.className='file-item';
+  div.innerHTML=`
+    <div class="file-icon">${icon}</div>
+    <div class="file-info"><div class="file-name" title="${esc(f.name)}">${esc(f.name)}</div><div class="file-meta">${size} · ${esc(f.uploader)} · ${f.time}</div></div>
+    <a class="file-dl" href="${f.url}" download="${esc(f.name)}" target="_blank">⬇</a>`;
+  list.prepend(div);
+  if(isVid) appendVideoFileItem(f);
+}
+
+// ═══════════════════════════════════════════════════════
+//  VIDEO FILE LIST
+// ═══════════════════════════════════════════════════════
+function appendVideoFileItem(f){
+  uploadedVideos.unshift(f);
+  renderVideoFileList();
+}
+
+function renderVideoFileList(){
+  const list=document.getElementById('videoFileList');
+  if(!list) return;
+  if(!uploadedVideos.length){
+    list.innerHTML='<p style="font-size:.73rem;color:var(--muted);text-align:center;padding:.4rem">上传视频后显示在此，双击播放</p>';
+    return;
+  }
+  list.innerHTML=`<div class="vfile-section-label">🎬 已上传视频（双击播放）</div>`;
+  uploadedVideos.forEach((f,idx)=>{
+    const size=f.size>1048576?(f.size/1048576).toFixed(1)+'MB':(f.size/1024).toFixed(0)+'KB';
+    const item=document.createElement('div');
+    item.className='vfile-item'; item.id=`vfile-${idx}`;
+    item.innerHTML=`
+      <span style="font-size:.95rem">🎬</span>
+      <div style="flex:1;min-width:0">
+        <div class="vfile-name">${esc(f.name)}</div>
+        <div class="vfile-meta">${size} · ${esc(f.uploader)}</div>
+      </div>
+      <span class="vfile-play-hint">双击▶</span>`;
+    item.ondblclick=()=>playVideoFile(f,idx);
+    list.appendChild(item);
+  });
+}
+
+function playVideoFile(f,idx){
+  if(!isHost){showToast('⚠️ 只有主持人可以发起播放');return;}
+  document.querySelectorAll('.vfile-item').forEach(el=>el.classList.remove('playing'));
+  const el=document.getElementById(`vfile-${idx}`); if(el) el.classList.add('playing');
+  const videoData={url:f.url,name:f.name,playing:true,position:0};
+  wsSend({type:'video_load',url:f.url,name:f.name});
+  createVideoPlayerWin(videoData);
+  showToast(`▶ 正在播放: ${f.name}`);
+}
+
+function handleVideoFileDrop(ev){
+  ev.preventDefault();
+  ev.currentTarget.classList.remove('drag');
+  const f=ev.dataTransfer.files[0];
+  if(f&&f.type.startsWith('video/')) uploadFileObj(f,true);
+  else showToast('⚠️ 请拖入视频文件');
+}
+function uploadVideoFile(input){const f=input.files[0];if(f){uploadFileObj(f,true);input.value='';}}
+
+// ═══════════════════════════════════════════════════════
+//  VIDEO URL LOAD
+// ═══════════════════════════════════════════════════════
+function loadVideoUrl(){
+  const url=document.getElementById('videoUrlInput').value.trim();
+  if(!url){showToast('⚠️ 请输入视频 URL');return;}
+  const name=url.split('/').pop().split('?')[0]||'视频';
+  wsSend({type:'video_load',url,name});
+  createVideoPlayerWin({url,name,playing:false,position:0});
+}
+
+function syncVideoControl(action,position){
+  if(isHost) return;
+  const vid=getVideoEl(); if(!vid) return;
+  if(Math.abs((vid.currentTime||0)-position)>1) vid.currentTime=position;
+  if(action==='play') vid.play().catch(()=>{});
+  else if(action==='pause') vid.pause();
+  else if(action==='seek') vid.currentTime=position;
+}
+
+function closeVideoPlayer(){
+  const v=document.getElementById('meetingVideo');
+  if(v){v.pause();v.src='';}
+  wsSend({type:'video_close'});
+  closeWin('videoplayer');
+}
+
+// ═══════════════════════════════════════════════════════
+//  CHAT
+// ═══════════════════════════════════════════════════════
+function sendChat(){
+  const input=document.getElementById('chatInput');
+  const text=input?.value.trim(); if(!text) return;
+  wsSend({type:'chat',text}); input.value='';
+}
+function appendChat(entry){
+  const msgs=document.getElementById('chatMessages'); if(!msgs) return;
+  const isMine=entry.pid===myPid;
+  const el=document.createElement('div'); el.className='chat-msg'+(isMine?' mine':'');
+  el.innerHTML=`<div class="cm-header"><span class="cm-name">${esc(entry.name)}</span><span class="cm-time">${entry.time}</span></div><div class="cm-text">${esc(entry.text)}</div>`;
+  msgs.appendChild(el); msgs.scrollTop=msgs.scrollHeight;
+}
+
+// ═══════════════════════════════════════════════════════
+//  INVITE
+// ═══════════════════════════════════════════════════════
+async function copyInvite(){
+  const url=`${location.origin}?room=${roomId}`;
+  try{await navigator.clipboard.writeText(url);}catch(e){}
+  showToast(`✅ 邀请链接已复制！房间 ID: ${roomId}`);
+}
+
+// ═══════════════════════════════════════════════════════
+//  LEAVE / END
+// ═══════════════════════════════════════════════════════
+function leaveRoom(force=false){
+  if(!force&&!confirm('确定要离开会议吗？')) return;
+  Object.keys(peerConnections).forEach(pid=>{
+    const pc=peerConnections[pid]; if(pc) pc.close(); delete peerConnections[pid];
+  });
+  if(localStream){localStream.getTracks().forEach(t=>t.stop());localStream=null;}
+  if(screenStream){screenStream.getTracks().forEach(t=>t.stop());screenStream=null;}
+  if(ws){ws.close();ws=null;}
+  clearInterval(timerInterval);
+  // Remove all windows
+  Object.keys(wins).forEach(id=>{wins[id].el.remove();removeTaskItem(id);});
+  Object.keys(wins).forEach(k=>delete wins[k]);
+  document.getElementById('taskbar').innerHTML='<span class="taskbar-label">最小化：</span>';
+  seconds=0;
+  document.getElementById('room').style.display='none';
+  document.getElementById('lobby').style.display='flex';
+  document.getElementById('lbStatus').innerHTML='';
+}
+
+function newMeeting(){
+  closeModal('summaryOverlay');
+  document.getElementById('room').style.display='none';
+  document.getElementById('lobby').style.display='flex';
+  document.getElementById('lbStatus').innerHTML='';
+  document.getElementById('lbRoom').value='';
+}
+
+// ═══════════════════════════════════════════════════════
+//  SUMMARY
+// ═══════════════════════════════════════════════════════
+function showSummary(summaryJson,duration){
+  document.getElementById('sumLoading').style.display='none';
+  document.getElementById('sumBody').style.display='block';
+  document.getElementById('copySumBtn').style.display='inline-block';
+  document.getElementById('newMeetBtn').style.display='inline-block';
+  let s;
+  try{s=typeof summaryJson==='string'?JSON.parse(summaryJson):summaryJson;}
+  catch(e){s={title:'会议纪要',overview:String(summaryJson),keyPoints:[],decisions:[],nextSteps:[],conclusion:''};}
+  const attendees=(s.attendees||[]).join('、')||'—';
+  document.getElementById('sumStats').innerHTML=`
+    <div class="sbox"><div class="sv">${duration||'—'}</div><div class="sl">时长</div></div>
+    <div class="sbox"><div class="sv">${(s.attendees||[]).length||1}</div><div class="sl">人数</div></div>
+    <div class="sbox"><div class="sv">${(s.keyPoints||[]).length}</div><div class="sl">议题</div></div>`;
+  const kp=(s.keyPoints||[]).map(k=>`<li>${esc(k)}</li>`).join('');
+  const dec=(s.decisions||[]).map(k=>`<li>${esc(k)}</li>`).join('');
+  const ns=(s.nextSteps||[]).map(k=>`<li>${esc(k)}</li>`).join('');
+  const ha=(s.hostActions||[]).map(k=>`<li>${esc(k)}</li>`).join('');
+  const ch=(s.chatHighlights||[]).map(k=>`<li>${esc(k)}</li>`).join('');
+  const sf=(s.sharedFiles||[]).map(k=>`<li>${esc(k)}</li>`).join('');
+  document.getElementById('sumContent').innerHTML=`
+    <div class="sum-sec"><h4>📋 ${esc(s.title||'会议纪要')}</h4><p>${esc(s.overview||'')}</p></div>
+    <div class="sum-sec"><h4>👥 参与者</h4><p>${esc(attendees)}</p></div>
+    ${kp?`<div class="sum-sec"><h4>✅ 主要议题</h4><ul>${kp}</ul></div>`:''}
+    ${ch?`<div class="sum-sec"><h4>💬 聊天摘要</h4><ul>${ch}</ul></div>`:''}
+    ${sf?`<div class="sum-sec"><h4>📁 分享文件</h4><ul>${sf}</ul></div>`:''}
+    ${ha?`<div class="sum-sec"><h4>🎤 主持人操作</h4><ul>${ha}</ul></div>`:''}
+    ${dec?`<div class="sum-sec"><h4>📌 决定事项</h4><ul>${dec}</ul></div>`:''}
+    ${ns?`<div class="sum-sec"><h4>⏭ 后续行动</h4><ul>${ns}</ul></div>`:''}
+    ${s.conclusion?`<div class="sum-sec"><h4>🏁 结论</h4><p>${esc(s.conclusion)}</p></div>`:''}`;
+  summaryRawText=`【${s.title}】\n时长：${duration}｜参与者：${attendees}\n\n${s.overview}\n\n`+
+    (s.keyPoints?.length?`主要议题：\n${s.keyPoints.map(k=>'• '+k).join('\n')}\n\n`:'')+
+    (s.sharedFiles?.length?`分享文件：\n${s.sharedFiles.map(k=>'• '+k).join('\n')}\n\n`:'')+
+    (s.decisions?.length?`决定事项：\n${s.decisions.map(k=>'• '+k).join('\n')}\n\n`:'')+
+    (s.nextSteps?.length?`后续行动：\n${s.nextSteps.map(k=>'• '+k).join('\n')}\n\n`:'')+
+    (s.conclusion?`结论：${s.conclusion}`:'');
+}
+async function copySummaryText(){try{await navigator.clipboard.writeText(summaryRawText);}catch(e){}showToast('✅ 已复制');}
+async function sendSummaryEmail(){
+  const em=document.getElementById('hostEmail').value.trim();
+  if(!em||!em.includes('@')){showToast('⚠️ 请输入有效邮箱');return;}
+  const st=document.getElementById('emailSt');
+  st.textContent='📤 发送中...'; st.style.color='var(--muted)';
+  await new Promise(r=>setTimeout(r,1400));
+  st.textContent=`✅ 已发送至 ${em}`; st.style.color='var(--success)';
+  showToast('✅ 已发送');
+}
+
+// ═══════════════════════════════════════════════════════
+//  UTILS
+// ═══════════════════════════════════════════════════════
+function startTimer(){
+  seconds=0; clearInterval(timerInterval);
+  timerInterval=setInterval(()=>{
+    seconds++;
+    const m=String(Math.floor(seconds/60)).padStart(2,'0');
+    const s=String(seconds%60).padStart(2,'0');
+    document.getElementById('roomTimer').textContent=`${m}:${s}`;
+  },1000);
+}
+function openModal(id){document.getElementById(id).classList.add('open');}
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+function showToast(msg){
+  const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2800);
+}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+// Tile on resize
+
+// ═══════════════════════════════════════════════════════
+//  LAYOUT PICKER
+// ═══════════════════════════════════════════════════════
+const LAYOUTS_AUTO=[
+  {id:'tile-equal', name:'均等平铺', desc:'所有窗口等分屏幕，自动计算行列', preview:(p,dw,dh)=>{
+    const n=4,c=2,r=2,pad=3,cw=(dw-pad*(c+1))/c,ch=(dh-pad*(r+1))/r;
+    for(let i=0;i<n;i++) lpW(p,pad+(i%c)*(cw+pad),pad+Math.floor(i/c)*(ch+pad),cw,ch);}},
+  {id:'focus', name:'单人焦点', desc:'一个主窗口占70%，其余缩略图排右侧', preview:(p,dw,dh)=>{
+    lpW(p,2,2,dw*.66,dh-4);
+    for(let i=0;i<3;i++) lpW(p,dw*.7,2+i*(dh/3-1),(dw*.28),dh/3-2);}},
+  {id:'speaker', name:'演讲者模式', desc:'主演讲者占上方60%，底部横排缩略图', preview:(p,dw,dh)=>{
+    lpW(p,2,2,dw-4,dh*.58,'s');
+    for(let i=0;i<3;i++) lpW(p,2+i*(dw/3-1),dh*.62,dw/3-2,dh*.35);}},
+  {id:'lr-split', name:'左右分屏', desc:'左侧视频，右侧聊天/面板', preview:(p,dw,dh)=>{
+    lpW(p,2,2,dw*.56,dh-4); lpW(p,dw*.59,2,dw*.39,dh-4,'c');}},
+  {id:'screen-main', name:'屏幕共享为主', desc:'共享屏幕占78%，参与者缩到右侧', preview:(p,dw,dh)=>{
+    lpW(p,2,2,dw*.75,dh-4,'s');
+    for(let i=0;i<2;i++) lpW(p,dw*.78,2+i*(dh/2-2),dw*.2,dh/2-3);}},
+  {id:'video-main', name:'视频播放为主', desc:'播放窗口占上方65%，参与者在底部', preview:(p,dw,dh)=>{
+    lpW(p,2,2,dw-4,dh*.62,'s');
+    for(let i=0;i<3;i++) lpW(p,2+i*(dw/3-1),dh*.65,dw/3-2,dh*.32);}},
+];
+
+const LAYOUTS_MANUAL=[
+  {id:'waterfall', name:'瀑布流', desc:'窗口错落排列，视觉层次丰富', preview:(p,dw,dh)=>{
+    const hs=[.9,.5,.7,.85,.55,.75],ts=[0,1,0,0,1,0],cw=(dw-16)/4;
+    for(let i=0;i<4;i++){const h=dh*hs[i],t=ts[i]===0?2:dh-h-2; lpW(p,2+i*(cw+2),t,cw,h);}
+  }},
+  {id:'3col', name:'三列等分', desc:'三列平均分配，灵活放多个窗口', preview:(p,dw,dh)=>{
+    const cw=(dw-8)/3;
+    for(let c=0;c<3;c++){lpW(p,2+c*(cw+2),2,cw,dh*.55,c===2?'c':''); lpW(p,2+c*(cw+2),dh*.58,cw,dh*.38);}
+  }},
+  {id:'2-1', name:'两大一小', desc:'左大窗口+右侧两个小窗口', preview:(p,dw,dh)=>{
+    lpW(p,2,2,dw*.6,dh-4);
+    lpW(p,dw*.63,2,dw*.35,dh/2-3); lpW(p,dw*.63,dh/2+1,dw*.35,dh/2-3);}},
+  {id:'sidebar-fixed', name:'侧边栏固定', desc:'侧边栏固定右侧，左侧视频平铺', preview:(p,dw,dh)=>{
+    lpW(p,2,2,dw*.24,dh-4,'c');
+    const cw=(dw*.73-6)/2;
+    for(let i=0;i<4;i++) lpW(p,dw*.27+2+(i%2)*(cw+2),2+Math.floor(i/2)*(dh/2-2),cw,dh/2-3);}},
+  {id:'cascade', name:'层叠', desc:'窗口错落叠放，经典桌面风格', preview:(p,dw,dh)=>{
+    const s=8,w=dw*.65,h=dh*.7;
+    for(let i=3;i>=0;i--) lpW(p,2+i*s,2+i*s,w,h);}},
+  {id:'free', name:'自由浮动', desc:'不自动排列，拖放随意定位', preview:(p,dw,dh)=>{
+    lpW(p,5,5,dw*.48,dh*.55); lpW(p,dw*.38,dh*.1,dw*.42,dh*.5);
+    lpW(p,dw*.55,dh*.38,dw*.42,dh*.55,'c');}},
+];
+
+function lpW(parent,x,y,w,h,type=''){
+  const d=document.createElement('div');
+  d.className='lp-w'+(type?' '+type:'');
+  d.style.cssText=`left:${Math.round(x)}px;top:${Math.round(y)}px;width:${Math.round(Math.max(w,2))}px;height:${Math.round(Math.max(h,2))}px`;
+  parent.appendChild(d);
+}
+
+function buildLayoutPicker(){
+  buildLpSection('lpAutoGrid',LAYOUTS_AUTO);
+  buildLpSection('lpManualGrid',LAYOUTS_MANUAL);
+}
+
+function buildLpSection(containerId, layouts){
+  const grid=document.getElementById(containerId); if(!grid) return;
+  grid.innerHTML='';
+  layouts.forEach(l=>{
+    const btn=document.createElement('div');
+    btn.className='lp-btn'+(currentLayout===l.id?' lp-active':'');
+    btn.dataset.layout=l.id;
+    btn.onclick=()=>{ applyLayout(l.id); closeLayoutPicker(); showToast('✅ 布局：'+l.name); };
+
+    const prev=document.createElement('div');
+    prev.className='lp-preview';
+    btn.appendChild(prev);
+
+    const nm=document.createElement('div'); nm.className='lp-name'; nm.textContent=l.name;
+    const ds=document.createElement('div'); ds.className='lp-desc'; ds.textContent=l.desc;
+    btn.appendChild(nm); btn.appendChild(ds);
+    grid.appendChild(btn);
+
+    // Draw mini preview after layout
+    requestAnimationFrame(()=>{
+      const pw=prev.offsetWidth||80, ph=prev.offsetHeight||52;
+      l.preview(prev,pw,ph);
+    });
+  });
+}
+
+function openLayoutPicker(){
+  buildLayoutPicker();
+  document.getElementById('layoutPicker').classList.add('open');
+}
+function closeLayoutPicker(){
+  document.getElementById('layoutPicker').classList.remove('open');
+}
+
+// ═══════════════════════════════════════════════════════
+//  CONTEXT MENU
+// ═══════════════════════════════════════════════════════
+let ctxTargetId=null;
+
+function showCtxMenu(e,winId){
+  e.preventDefault(); e.stopPropagation();
+  ctxTargetId=winId;
+  const menu=document.getElementById('ctxMenu');
+  menu.classList.add('open');
+  // Position near cursor, keep within viewport
+  const mx=Math.min(e.clientX, window.innerWidth-menu.offsetWidth-8);
+  const my=Math.min(e.clientY, window.innerHeight-menu.offsetHeight-8);
+  menu.style.left=mx+'px'; menu.style.top=my+'px';
+  // Update labels based on window state
+  const w=wins[winId];
+  if(w){
+    document.getElementById('ctxMax').querySelector('.ctx-icon').textContent=w.maxSaved?'🔲':'🟢';
+    document.getElementById('ctxMax').childNodes[1].textContent=w.maxSaved?' 还原':' 最大化 / 还原';
+  }
+  focusWin(winId);
+}
+
+function closeCtxMenu(){
+  document.getElementById('ctxMenu').classList.remove('open');
+  ctxTargetId=null;
+}
+
+function ctxAction(action){
+  const id=ctxTargetId; closeCtxMenu(); if(!id||!wins[id]) return;
+  if(action==='min') minimizeWin(id);
+  else if(action==='max') maximizeWin(id);
+  else if(action==='snap'){
+    const desktop=document.getElementById('desktop');
+    const dw=desktop.clientWidth, dh=desktop.clientHeight;
+    const w=wins[id];
+    // Snap to left or right half based on current position
+    const curL=parseInt(w.el.style.left)||0;
+    if(curL < dw/2){
+      setWin(id,0,0,Math.floor(dw/2)-3,dh);
+    } else {
+      setWin(id,Math.floor(dw/2)+3,0,Math.floor(dw/2)-3,dh);
+    }
+    w.maxSaved=null;
+  }
+}
+
+function minimizeAll(){
+  closeCtxMenu();
+  Object.keys(wins).forEach(id=>minimizeWin(id));
+}
+
+// Close context menu on outside click
+document.addEventListener('click', e=>{
+  const menu=document.getElementById('ctxMenu');
+  if(menu&&menu.classList.contains('open')&&!menu.contains(e.target)) closeCtxMenu();
+}, true);
+
+window.addEventListener('resize',()=>{tileVisible();});
+
+// URL param
+(function(){
+  const p=new URLSearchParams(location.search);
+  const r=p.get('room');
+  if(r){document.getElementById('lbRoom').value=r;document.getElementById('lbRole').value='participant';}
+})();
+
+// Keyboard shortcuts
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){closeLayoutPicker();closeCtxMenu();}
+  // Ctrl/Cmd + number keys for quick layout switch
+  if((e.ctrlKey||e.metaKey)&&!e.shiftKey){
+    const map={'1':'tile-equal','2':'focus','3':'speaker','4':'lr-split','5':'screen-main','6':'video-main','7':'waterfall','8':'3col','9':'2-1','0':'cascade'};
+    if(map[e.key]){e.preventDefault();applyLayout(map[e.key]);showToast('⊞ 布局：'+map[e.key]);}
+  }
+});
+</script>
+</body>
+</html>
